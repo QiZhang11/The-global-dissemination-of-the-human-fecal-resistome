@@ -1,0 +1,58 @@
+import numpy as np
+import pandas as pd
+from sklearn import svm
+import joblib
+
+
+path="C:/Users/plant/Desktop/gut AMR-SVM.csv"
+k=10
+feature_num=30
+data=pd.read_csv(path)
+save_path="best_SVM.pkl"
+C=1.0
+kernel='rbf'
+degree=3
+gamma='scale'
+coef0=0.0
+shrinking=True
+probability=False
+tol=1e-3
+cache_size=200
+class_weight=None
+verbose=False
+max_iter=-1
+decision_function_shape='ovr'
+break_ties=False
+random_state=None
+
+name=list(data.columns.values)
+Data=np.array(data)
+np.random.shuffle(Data)
+num_val_sample=len(Data)//k
+score_list=[]
+
+best_SVM=svm.SVC()
+best_score=0
+best_score_list=[]
+
+for i in range(k):
+    x_test=Data[i*num_val_sample:(i+1)*num_val_sample,0:feature_num]
+    y_test=Data[i*num_val_sample:(i+1)*num_val_sample,feature_num:]
+    x_train=np.concatenate([Data[:i*num_val_sample,0:feature_num],Data[(i+1)*num_val_sample:,0:feature_num]],axis=0)
+    y_train = np.concatenate([Data[:i * num_val_sample, feature_num:], Data[(i + 1) * num_val_sample:, feature_num:]], axis=0)
+    
+    SVM=svm.SVC(C=C, kernel=kernel, degree=degree, gamma=gamma,coef0=coef0, shrinking=shrinking, probability=probability,tol=tol,
+                cache_size=cache_size, class_weight=class_weight,verbose=verbose, max_iter=max_iter, decision_function_shape=decision_function_shape,
+                 break_ties=break_ties,random_state=random_state)
+    SVM.fit(x_train,y_train.astype('int'))
+    score = SVM.score(x_test,y_test.astype('int'))
+    if best_score<score:
+        best_score=score
+        best_SVM=SVM
+    score_list.append(score)
+print(score_list)
+print(sum(score_list)/len(score_list))
+
+joblib.dump(best_SVM,save_path)
+
+print(best_score)
