@@ -1,0 +1,111 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import sklearn
+from sklearn import tree
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.model_selection import GridSearchCV
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.decomposition import PCA
+#from sklearn.preprocessing import Imputer
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import label_binarize
+from sklearn import metrics
+from sklearn import tree
+from sklearn.metrics import mean_squared_error
+from pyecharts.charts import Bar
+#from pyecharts import option as opts
+from collections import defaultdict
+
+mpl.rcParams['font.sans-serif'] = [u'SimHei']
+mpl.rcParams['axes.unicode_minus'] = False
+
+#path="demo.xlsx"
+path="C:/Users/plant/Desktop/demo.xlsx"
+#path=".xlsx"
+data = pd.read_excel(path) 
+name = ['Element1','Element2','Element3','Element4','Element5','Element6','Element7','Element8','Element9','Element10',
+         'Element11','Element12','Element13','Element14','Element15','Element16','Element17','Element18','Element19','Element20',
+         'Element21','Element22','Element23','Element24','Element25','Element26','Element27','Element28','Element29','Element30',... ]
+X = data[data.columns[0:30]]
+
+
+
+Y = data[data.columns[30:]] 
+
+
+X = X.replace("?", np.NAN)
+imputer = SimpleImputer()
+X = imputer.fit_transform(X,Y)
+
+
+x_train,x_test,y_train,y_test=train_test_split(X,Y,test_size=0.3,random_state=0)
+#x_train,x_test,y_train,y_test=train_test_split(x,y,test_size=0.3,random_state=0)
+print('training sample：%d，feature：%d，target feature：%d'%(x_train.shape[0],x_train.shape[1],y_train.shape[1]))
+print('testing sample：%d'%x_test.shape[0])
+
+
+forest=RandomForestRegressor(max_depth=3,random_state=0,oob_score=True,warm_start=True)
+max_error=-1000
+error_going_up=0
+for n_estimators in range(1,120):
+    forest.n_estimators=n_estimators
+    forest.fit(x_train,y_train)
+    y_pred=forest.predict(x_test)
+    test_error=sklearn.metrics.r2_score(y_test,y_pred)
+    if test_error>max_error:
+        max_error=test_error
+        error_going_up=0
+    else:
+        error_going_up+=1
+        if error_going_up==5:
+            break
+print("test_error:\n",test_error)
+print("n_estimators:\n",n_estimators-5)
+print("Variable importance\n",forest.feature_importances_)
+print("IncMSE\n",forest.feature_importances_)
+scores = defaultdict(list)
+for i in range(X.shape[1]):
+    X_t=x_test.copy()
+    np.random.shuffle(X_t[:,i])
+    shuff_acc=sklearn.metrics.r2_score(y_test,forest.predict(X_t))
+    scores[name[i]].append((test_error-shuff_acc)/test_error)
+Scores=[]
+for i in scores.items():
+    Scores.append(i)
+Name=[i[0] for i in Scores]
+Acc=[i[1] for i in Scores]
+Acc=np.array(Acc).reshape(-1)
+print("Acc",Acc)
+important=forest.feature_importances_
+plt.figure()
+plt.barh(name,important,align='center',alpha=0.7,color=['#130074','#631879FF','#008B45FF'])
+plt.title('Variable importance')
+plt.show()
+plt.barh(Name,Acc,align='center',alpha=0.7,color=['#130074','#631879FF','#008B45FF'])
+plt.title('IncMSE')
+plt.show()
+print("y_test",y_test)
+print("y_pred",y_pred)
+
+
+from IPython.display import Image
+import pydotplus
+
+k = 0
+for clf in forest.estimators_:
+    dot_data = tree.export_graphviz(clf, out_file=None,
+                         filled=True, rounded=True,
+                         special_characters=True)
+    graph = pydotplus.graph_from_dot_data(dot_data)
+    graph.write_pdf("foress_tree_%d.pdf" % k)
+    #graph.write_png("foress_tree_%d.png" % k)
+    k += 1
+    if k == 10:
+        break
+
+'''
